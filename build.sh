@@ -10,7 +10,7 @@ if [ -v release ];   then echo "[release mode]"; fi
 compile_common="-I../src/ -pedantic -Wall -Wextra"
 compile_debug="gcc -g -O0 ${compile_common}"
 compile_release="gcc -g -O2 ${compile_common}"
-link=""
+link="-lX11"
 out="-o"
 
 if [ -v debug ]; then compile="$compile_debug"; fi
