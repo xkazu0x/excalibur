@@ -30,14 +30,9 @@ typedef double   f64;
 #define max(a, b) ((a)>(b)?(a):(b))
 #define min(a, b) ((a)<(b)?(a):(b))
 
-#define abs_s32(x) ((x)<(0)?(x)*(-1):(x))
-
-internal void
-swap_s32(s32 *a, s32 *b) {
-    s32 t = *a;
-    *a = *b;
-    *b = t;
-}
+#define swap_t(type, a, b) do { type t = a; a = b; b = t;} while (0)
+#define sign_t(type, x) ((type)((x) > 0) - (type)((x) < 0))
+#define abs_t(type, x) (sign_t(type, x)*(x))
 
 typedef struct {
     f32 x, y;
@@ -45,33 +40,26 @@ typedef struct {
 
 internal Vector2
 make_vector2(f32 x, f32 y) {
-    Vector2 result;
-    result.x = x;
-    result.y = y;
+    Vector2 result = { x, y };
     return(result);
 }
 
-#define BYTES_PER_PIXEL 4
-#define BITS_PER_PIXEL 32
-
 internal void
-draw_clear(u8 *buffer, u32 width, u32 height, u32 color) {
-    u32 *dest = (u32 *)buffer;
+draw_clear(u32 *buffer, u32 width, u32 height, u32 color) {
     for (u32 i = 0; i < width*height; ++i) {
-        dest[i] = color;
+        buffer[i] = color;
     }
 }
 
 internal void
-draw_fill_rect(u8 *buffer, u32 width, u32 height,
+draw_fill_rect(u32 *buffer, u32 width, u32 height,
                s32 x0, s32 y0, s32 x1, s32 y1,
                u32 color) {
-    u32 *dest = (u32 *)buffer;
     for (s32 y = y0; y <= y1; ++y) {
         if (y >= 0 && y < (s32)height) {
             for (s32 x = x0; x <= x1; ++x) {
                 if (x >= 0 && x < (s32)width) {
-                    dest[y*width + x] = color;
+                    buffer[y*width + x] = color;
                 }
             }
         }
@@ -79,14 +67,13 @@ draw_fill_rect(u8 *buffer, u32 width, u32 height,
 }
 
 internal void
-draw_fill_circle(u8 *buffer, u32 width, u32 height,
+draw_fill_circle(u32 *buffer, u32 width, u32 height,
                  s32 cx, s32 cy, s32 r, 
                  u32 color) {
     s32 x0 = cx - r; 
     s32 y0 = cy - r;
     s32 x1 = cx + r;
     s32 y1 = cy + r;
-    u32 *dest = (u32 *)buffer;
     for (s32 y = y0; y <= y1; ++y) {
         if (y >= 0 && y < (s32)height) {
             for (s32 x = x0; x <= x1; ++x) {
@@ -94,7 +81,7 @@ draw_fill_circle(u8 *buffer, u32 width, u32 height,
                     s32 dx = x - cx;
                     s32 dy = y - cy;
                     if (dx*dx + dy*dy <= r*r) {
-                        dest[y*width + x] = color; 
+                        buffer[y*width + x] = color; 
                     }
                 }
             }
@@ -103,13 +90,13 @@ draw_fill_circle(u8 *buffer, u32 width, u32 height,
 }
 
 internal void
-draw_line(u8 *buffer, u32 width, u32 height,
+draw_line(u32 *buffer, u32 width, u32 height,
           s32 x0, s32 y0, s32 x1, s32 y1,
           u32 color) {
-    if (abs_s32(x1 - x0) > abs_s32(y1 - y0)) {
+    if (abs_t(s32, x1 - x0) > abs_t(s32, y1 - y0)) {
         if (x0 > x1) {
-            swap_s32(&x0, &x1);
-            swap_s32(&y0, &y1);
+            swap_t(s32, x0, x1);
+            swap_t(s32, y0, y1);
         }
         s32 dx = x1 - x0;
         s32 dy = y1 - y0;
@@ -118,11 +105,10 @@ draw_line(u8 *buffer, u32 width, u32 height,
         if (dx != 0) {
             s32 y = y0;
             s32 d = 2*dy - dx;
-            u32 *dest = (u32 *)buffer;
             for (s32 x = x0; x <= x1; ++x) {
                 if ((y >= 0 && y < (s32)height) &&
                     (x >= 0 && x < (s32)width)) {
-                    dest[y*width + x] = color; 
+                    buffer[y*width + x] = color; 
                 }
                 if (d >= 0) {
                     y += dir;
@@ -133,8 +119,8 @@ draw_line(u8 *buffer, u32 width, u32 height,
         }
     } else {
         if (y0 > y1) {
-            swap_s32(&x0, &x1);
-            swap_s32(&y0, &y1);
+            swap_t(s32, x0, x1);
+            swap_t(s32, y0, y1);
         }
         s32 dx = x1 - x0;
         s32 dy = y1 - y0;
@@ -143,11 +129,10 @@ draw_line(u8 *buffer, u32 width, u32 height,
         if (dy != 0) {
             s32 x = x0;
             s32 d = 2*dx - dy;
-            u32 *dest = (u32 *)buffer;
             for (s32 y = y0; y <= y1; ++y) {
                 if ((y >= 0 && y < (s32)height) &&
                     (x >= 0 && x < (s32)width)) {
-                    dest[y*width + x] = color; 
+                    buffer[y*width + x] = color; 
                 }
                 if (d >= 0) {
                     x += dir;
@@ -160,14 +145,55 @@ draw_line(u8 *buffer, u32 width, u32 height,
 }
 
 internal void
+draw_fill_triangle(u32 *buffer, u32 width, u32 height,
+                   s32 x0, s32 y0, 
+                   s32 x1, s32 y1, 
+                   s32 x2, s32 y2,
+                   u32 color) {
+    s32 x01 = x1 - x0;
+    s32 y01 = y1 - y0;
+    s32 x12 = x2 - x1;
+    s32 y12 = y2 - y1;
+    s32 x20 = x0 - x2;
+    s32 y20 = y0 - y2;
+    s32 x_min = min(min(x0, x1), x2);
+    s32 y_min = min(min(y0, y1), y2);
+    s32 x_max = max(max(x0, x1), x2);
+    s32 y_max = max(max(y0, y1), y2);
+    for (s32 y = y_min; y < y_max; ++y) {
+        if (y >= 0 && y < (s32)height) {
+            for (s32 x = x_min; x < x_max; ++x) {
+                if (x >= 0 && x < (s32)width) {
+                    s32 dx0 = x - x0;
+                    s32 dy0 = y - y0;
+                    s32 dx1 = x - x1;
+                    s32 dy1 = y - y1;
+                    s32 dx2 = x - x2;
+                    s32 dy2 = y - y2;
+                    s32 w0 = x01*dy0 - y01*dx0;
+                    s32 w1 = x12*dy1 - y12*dx1;
+                    s32 w2 = x20*dy2 - y20*dx2;
+                    if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+                        buffer[y*width + x] = color;
+                    }
+                }
+            }
+        }
+    }
+}
+
+internal void
 project_world_to_screen(u32 window_width, u32 window_height, 
                         f32 world_x, f32 world_y, 
                         f32 *screen_x, f32 *screen_y) {
     f32 aspect_ratio = (f32)window_height/(f32)window_width;
+    // f32 aspect_ratio = 1.0f;
     *screen_x = (world_x*aspect_ratio + 1.0f)*(f32)window_width/2;
     *screen_y = (-world_y + 1.0f)*(f32)window_height/2;
 }
 
+#define BYTES_PER_PIXEL 4
+#define BITS_PER_PIXEL 32
 
 int
 main(void) {
@@ -177,8 +203,8 @@ main(void) {
     u32 back_buffer_width = window_width;
     u32 back_buffer_height = window_height;
     u32 back_buffer_pitch = back_buffer_width*BYTES_PER_PIXEL;
-    size_t back_buffer_size = back_buffer_pitch*back_buffer_height;
-    u8 *back_buffer_memory = malloc(back_buffer_size);
+    u64 back_buffer_size = back_buffer_pitch*back_buffer_height;
+    u32 *back_buffer = malloc(back_buffer_size);
 
     Display *display = XOpenDisplay(0);
     if (display) {
@@ -200,7 +226,7 @@ main(void) {
         XWindowAttributes attributes = {0};
         XGetWindowAttributes(display, window, &attributes);
         XImage *image = XCreateImage(display, attributes.visual, attributes.depth, ZPixmap, 0, 
-                                     (char *)back_buffer_memory, back_buffer_width, back_buffer_height, 
+                                     (char *)back_buffer, back_buffer_width, back_buffer_height, 
                                      BITS_PER_PIXEL, back_buffer_pitch);
 
         b32 quit = false;
@@ -232,67 +258,30 @@ main(void) {
                         back_buffer_height = window_height;
                         back_buffer_pitch = back_buffer_width*BYTES_PER_PIXEL;
                         back_buffer_size = back_buffer_pitch*back_buffer_height;
-                        back_buffer_memory = malloc(back_buffer_size);
+                        back_buffer = malloc(back_buffer_size);
                         image = XCreateImage(display, attributes.visual, attributes.depth, ZPixmap, 0, 
-                                             (char *)back_buffer_memory, back_buffer_width, back_buffer_height, 
+                                             (char *)back_buffer, back_buffer_width, back_buffer_height, 
                                              BITS_PER_PIXEL, back_buffer_pitch);
                     } break;
                 }
             }
-            
-            draw_clear(back_buffer_memory, back_buffer_width, back_buffer_height, 0x222222);
 
-            s32 square_size = 32;
-            s32 half_size = square_size/2;
+            draw_clear(back_buffer, back_buffer_width, back_buffer_height, 0);
+
             Vector2 w0, w1, w2;
             Vector2 p0, p1, p2;
-
-            w0 = make_vector2(-0.5f, -0.5f);
-            w1 = make_vector2( 0.0f,  0.5f);
-            w2 = make_vector2( 0.5f, -0.5f);
+            
+            // NOTE: CW
+            w0 = make_vector2(-0.15f,  0.65f);
+            w1 = make_vector2( 0.5f, -0.65f);
+            w2 = make_vector2(-0.5f, -0.35f);
 
             project_world_to_screen(window_width, window_height, w0.x, w0.y, &p0.x, &p0.y);
             project_world_to_screen(window_width, window_height, w1.x, w1.y, &p1.x, &p1.y);
             project_world_to_screen(window_width, window_height, w2.x, w2.y, &p2.x, &p2.y);
 
-            draw_fill_circle(back_buffer_memory, back_buffer_width, back_buffer_height, 
-                             (s32)p0.x, (s32)p0.y, half_size, 0xFF0000);
-            draw_fill_circle(back_buffer_memory, back_buffer_width, back_buffer_height, 
-                             (s32)p1.x, (s32)p1.y, half_size, 0x00FF00);
-            draw_fill_circle(back_buffer_memory, back_buffer_width, back_buffer_height, 
-                             (s32)p2.x, (s32)p2.y, half_size, 0x0000FF);
-            
-            draw_line(back_buffer_memory, back_buffer_width, back_buffer_height,
-                      p0.x, p0.y, p1.x, p1.y, 0xFF0000);
-            draw_line(back_buffer_memory, back_buffer_width, back_buffer_height,
-                      p1.x, p1.y, p2.x, p2.y, 0x00FF00);
-            draw_line(back_buffer_memory, back_buffer_width, back_buffer_height,
-                      p2.x, p2.y, p0.x, p0.y, 0x0000FF);
-
-            Vector2 w3, w4, w5;
-            Vector2 p3, p4, p5;
-
-            w3 = make_vector2(-0.5f,  0.25f);
-            w4 = make_vector2( 0.5f,  0.25f);
-            w5 = make_vector2( 0.0f, -0.75f);
-
-            project_world_to_screen(window_width, window_height, w3.x, w3.y, &p3.x, &p3.y);
-            project_world_to_screen(window_width, window_height, w4.x, w4.y, &p4.x, &p4.y);
-            project_world_to_screen(window_width, window_height, w5.x, w5.y, &p5.x, &p5.y);
-
-            draw_fill_circle(back_buffer_memory, back_buffer_width, back_buffer_height, 
-                             (s32)p3.x, (s32)p3.y, half_size, 0xFFFF00);
-            draw_fill_circle(back_buffer_memory, back_buffer_width, back_buffer_height, 
-                             (s32)p4.x, (s32)p4.y, half_size, 0x00FFFF);
-            draw_fill_circle(back_buffer_memory, back_buffer_width, back_buffer_height, 
-                             (s32)p5.x, (s32)p5.y, half_size, 0xFF00FF);
-            
-            draw_line(back_buffer_memory, back_buffer_width, back_buffer_height,
-                      p3.x, p3.y, p4.x, p4.y, 0xFFFF00);
-            draw_line(back_buffer_memory, back_buffer_width, back_buffer_height,
-                      p4.x, p4.y, p5.x, p5.y, 0x00FFFF);
-            draw_line(back_buffer_memory, back_buffer_width, back_buffer_height,
-                      p5.x, p5.y, p3.x, p3.y, 0xFF00FF);
+            draw_fill_triangle(back_buffer, back_buffer_width, back_buffer_height,
+                               p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, 0x00FF00);
 
             XPutImage(display, window, context, image, 0, 0, 0, 0, window_width, window_height);
         }
