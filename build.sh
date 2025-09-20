@@ -10,7 +10,7 @@ if [ -v release ];   then echo "[release mode]"; fi
 if [ -v clang ];     then compiler="${CC:-clang}"; echo "[clang compiler]"; fi
 if [ -v gcc ];       then compiler="${CC:-gcc}"; echo "[gcc compiler]"; fi
 
-compile_common="-I../src/ -g -pedantic -Wall -Wextra -Wno-unused-function"
+compile_common="-I../src/ -g -std=c99 -pedantic -Wall -Wextra -Wno-unused-function -Wno-zero-length-array"
 compile_debug="$compiler -O0 ${compile_common}"
 compile_release="$compiler -O2 ${compile_common}"
 link="-lX11"

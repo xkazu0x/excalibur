@@ -1,49 +1,9 @@
+#include "base.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-
-#define internal static
-#define global   static
-#define local    static
-
-#define false 0
-#define true 1
-
-#include <stdint.h>
-#include <stddef.h>
-typedef size_t   uxx;
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t   s8;
-typedef int16_t  s16;
-typedef int32_t  s32;
-typedef int64_t  s64;
-typedef s8       b8;
-typedef s16      b16;
-typedef s32      b32;
-typedef s64      b64;
-typedef float    f32;
-typedef double   f64;
-
-#define max(a, b) ((a)>(b)?(a):(b))
-#define min(a, b) ((a)<(b)?(a):(b))
-
-#define swap_t(T, a, b) do { T t = a; a = b; b = t; } while (0)
-#define sign_t(T, x) ((T)((x) > 0) - (T)((x) < 0))
-#define abs_t(T, x) (sign_t(T, x)*(x))
-
-typedef struct {
-    f32 x, y;
-} Vector2;
-
-internal Vector2
-make_vector2(f32 x, f32 y) {
-    Vector2 result = { x, y };
-    return(result);
-}
 
 ///////////////////////////////
 // NOTE: Draw functions
@@ -56,9 +16,9 @@ clear(u32 *buffer, u32 width, u32 height, u32 color) {
 }
 
 internal void
-draw_fill_rect(u32 *buffer, u32 width, u32 height,
-               s32 x0, s32 y0, s32 x1, s32 y1,
-               u32 color) {
+draw_rect(u32 *buffer, u32 width, u32 height,
+          s32 x0, s32 y0, s32 x1, s32 y1,
+          u32 color) {
     if (x0 > x1) swap_t(s32, x0, x1);
     if (y0 > y1) swap_t(s32, y0, y1);
     if (x0 < 0) x0 = 0;
@@ -73,9 +33,9 @@ draw_fill_rect(u32 *buffer, u32 width, u32 height,
 }
 
 internal void
-draw_fill_circle(u32 *buffer, u32 width, u32 height,
-                 s32 cx, s32 cy, s32 r, 
-                 u32 color) {
+draw_circle(u32 *buffer, u32 width, u32 height,
+            s32 cx, s32 cy, s32 r, 
+            u32 color) {
     r = abs_t(s32, r);
     s32 x0 = cx - r; 
     s32 y0 = cy - r;
@@ -152,10 +112,10 @@ draw_line(u32 *buffer, u32 width, u32 height,
 }
 
 internal void
-draw_fill_triangle0(u32 *buffer, u32 width, u32 height,
-                    s32 x0, s32 y0, u32 r0, u32 g0, u32 b0, 
-                    s32 x1, s32 y1, u32 r1, u32 g1, u32 b1, 
-                    s32 x2, s32 y2, u32 r2, u32 g2, u32 b2) {
+draw_triangle0(u32 *buffer, u32 width, u32 height,
+               s32 x0, s32 y0, u32 r0, u32 g0, u32 b0, 
+               s32 x1, s32 y1, u32 r1, u32 g1, u32 b1, 
+               s32 x2, s32 y2, u32 r2, u32 g2, u32 b2) {
     s32 x01 = x1 - x0;
     s32 y01 = y1 - y0;
 
@@ -173,10 +133,10 @@ draw_fill_triangle0(u32 *buffer, u32 width, u32 height,
     s32 bias1 = ((y12 == 0 && x12 > 0) || (y12 < 0)) ? 0 : -1;
     s32 bias2 = ((y20 == 0 && x20 > 0) || (y20 < 0)) ? 0 : -1;
 
-    s32 x_min = min(min(x0, x1), x2);
-    s32 y_min = min(min(y0, y1), y2);
-    s32 x_max = max(max(x0, x1), x2);
-    s32 y_max = max(max(y0, y1), y2);
+    s32 x_min = MIN(MIN(x0, x1), x2);
+    s32 y_min = MIN(MIN(y0, y1), y2);
+    s32 x_max = MAX(MAX(x0, x1), x2);
+    s32 y_max = MAX(MAX(y0, y1), y2);
 
     for (s32 y = y_min; y < y_max; ++y) {
         if (y >= 0 && y < (s32)height) {
@@ -216,10 +176,10 @@ draw_fill_triangle0(u32 *buffer, u32 width, u32 height,
 // WARN: Somehow the colors are being draw at the wrong points compared
 // to the other function
 internal void
-draw_fill_triangle(u32 *buffer, u32 width, u32 height,
-                   s32 x0, s32 y0, u32 r0, u32 g0, u32 b0, 
-                   s32 x1, s32 y1, u32 r1, u32 g1, u32 b1, 
-                   s32 x2, s32 y2, u32 r2, u32 g2, u32 b2) {
+draw_triangle(u32 *buffer, u32 width, u32 height,
+              s32 x0, s32 y0, u32 r0, u32 g0, u32 b0, 
+              s32 x1, s32 y1, u32 r1, u32 g1, u32 b1, 
+              s32 x2, s32 y2, u32 r2, u32 g2, u32 b2) {
     s32 x01 = x1 - x0;
     s32 y01 = y1 - y0;
 
@@ -237,10 +197,10 @@ draw_fill_triangle(u32 *buffer, u32 width, u32 height,
     s32 bias1 = ((y12 == 0 && x12 > 0) || (y12 < 0)) ? 0 : -1;
     s32 bias2 = ((y20 == 0 && x20 > 0) || (y20 < 0)) ? 0 : -1;
 
-    s32 x_min = min(min(x0, x1), x2);
-    s32 y_min = min(min(y0, y1), y2);
-    s32 x_max = max(max(x0, x1), x2);
-    s32 y_max = max(max(y0, y1), y2);
+    s32 x_min = MIN(MIN(x0, x1), x2);
+    s32 y_min = MIN(MIN(y0, y1), y2);
+    s32 x_max = MAX(MAX(x0, x1), x2);
+    s32 y_max = MAX(MAX(y0, y1), y2);
 
     s32 dx0 = x_min - x0;
     s32 dy0 = y_min - y0;
@@ -297,7 +257,7 @@ draw_fill_triangle(u32 *buffer, u32 width, u32 height,
 }
 
 internal void
-fill_rect_test(u32 *buffer, u32 width, u32 height) {
+draw_rect_test(u32 *buffer, u32 width, u32 height) {
     s32 x, y, size;
     size = height/4;
     clear(buffer, width, height, 0x334c4c);
@@ -306,37 +266,37 @@ fill_rect_test(u32 *buffer, u32 width, u32 height) {
     {
         x = -size/2;
         y = -size/2;
-        draw_fill_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
+        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
         x = width - size/2;
         y = -size/2;
-        draw_fill_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
+        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
         x = width - size/2;
         y = height - size/2;
-        draw_fill_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
+        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
         x = -size/2;
         y = height - size/2;
-        draw_fill_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
+        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
     }
 
     // NOTE: Check Bottom-Right to Top-Left draw order
     {
         x = -size/2;
         y = (height - size)/2;
-        draw_fill_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
+        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
         x = width - size/2;
         y = (height - size)/2;
-        draw_fill_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
+        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
         x = (width - size)/2;
         y = -size/2;
-        draw_fill_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
+        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
         x = (width - size)/2;
         y = height - size/2;
-        draw_fill_rect(buffer, width, height, x + size, y + size, x, y,  0xff8033);
+        draw_rect(buffer, width, height, x + size, y + size, x, y,  0xff8033);
     }
 }
 
 internal void
-fill_circle_test(u32 *buffer, u32 width, u32 height) {
+draw_circle_test(u32 *buffer, u32 width, u32 height) {
     s32 cx, cy, r; 
     r = height/8;
     clear(buffer, width, height, 0x334c4c);
@@ -345,16 +305,16 @@ fill_circle_test(u32 *buffer, u32 width, u32 height) {
     {
         cx = -16;
         cy = -16;
-        draw_fill_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
         cx = width;
         cy = -16;
-        draw_fill_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
         cx = width;
         cy = height;
-        draw_fill_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
         cx = -16;
         cy = height;
-        draw_fill_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
     }
 
     // NOTE: Check negative radius
@@ -362,14 +322,15 @@ fill_circle_test(u32 *buffer, u32 width, u32 height) {
         r = -(height/4);
         cx = width/2;
         cy = height/2;
-        draw_fill_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
     }
 }
 
 internal void
-line_test(u32 *buffer, u32 width, u32 height) {
+draw_line_test(u32 *buffer, u32 width, u32 height) {
     s32 x0, y0, x1, y1;
     clear(buffer, width, height, 0x334c4c);
+
     // NOTE: Check draw order
     {
         // NOTE: Top-Left - Bottom-Right
@@ -377,29 +338,28 @@ line_test(u32 *buffer, u32 width, u32 height) {
         y0 = 0;
         x1 = width/2;
         y1 = height;
-        draw_line(buffer, width, height,
-                  x0, y0, x1, y1, 0xff8033);
+        draw_line(buffer, width, height, x0, y0, x1, y1, 0xff8033);
+
         // NOTE: Bottom-Left - Top-Right
         x0 = 0;
         y0 = height;
         x1 = width/2;
         y1 = 0;
-        draw_line(buffer, width, height,
-                  x0, y0, x1, y1, 0xff8033);
+        draw_line(buffer, width, height, x0, y0, x1, y1, 0xff8033);
+
         // NOTE: Top-Right - Bottom-Left
         x0 = width;
         y0 = 0;
         x1 = width - width/2;
         y1 = height;
-        draw_line(buffer, width, height,
-                  x0, y0, x1, y1, 0xff8033);
+        draw_line(buffer, width, height, x0, y0, x1, y1, 0xff8033);
+
         // NOTE: Bottom-Right - Top-Left
         x0 = width;
         y0 = height;
         x1 = width - width/2;
         y1 = 0;
-        draw_line(buffer, width, height,
-                  x0, y0, x1, y1, 0xff8033);
+        draw_line(buffer, width, height, x0, y0, x1, y1, 0xff8033);
     }
 }
 
@@ -414,7 +374,7 @@ project_to_screen(u32 screen_width, u32 screen_height,
 }
 
 internal void
-fill_triangle_test(u32 *buffer, u32 width, u32 height) {
+draw_triangle_test(u32 *buffer, u32 width, u32 height) {
     Vector2 w0, w1, w2, w3;
     Vector2 p0, p1, p2, p3;
     clear(buffer, width, height, 0x334c4c);
@@ -430,22 +390,22 @@ fill_triangle_test(u32 *buffer, u32 width, u32 height) {
     project_to_screen(width, height, w2.x, w2.y, &p2.x, &p2.y);
     project_to_screen(width, height, w3.x, w3.y, &p3.x, &p3.y);
 
-    draw_fill_triangle(buffer, width, height,
-                       p0.x, p0.y, 0xFF, 0x00, 0x00,
-                       p1.x, p1.y, 0x00, 0xFF, 0x00,
-                       p2.x, p2.y, 0x00, 0x00, 0xFF);
-    draw_fill_triangle(buffer, width, height,
-                       p2.x, p2.y, 0xFF, 0x00, 0x00,
-                       p3.x, p3.y, 0x00, 0xFF, 0x00,
-                       p0.x, p0.y, 0x00, 0x00, 0xFF);
+    draw_triangle(buffer, width, height,
+                  p0.x, p0.y, 0xFF, 0x00, 0x00,
+                  p1.x, p1.y, 0x00, 0xFF, 0x00,
+                  p2.x, p2.y, 0x00, 0x00, 0xFF);
+    draw_triangle(buffer, width, height,
+                  p2.x, p2.y, 0xFF, 0x00, 0x00,
+                  p3.x, p3.y, 0x00, 0xFF, 0x00,
+                  p0.x, p0.y, 0x00, 0x00, 0xFF);
 }
 
 internal void
 draw_test(u32 *buffer, u32 width, u32 height) {
-    // fill_rect_test(buffer, width, height);
-    // fill_circle_test(buffer, width, height);
-    // line_test(buffer, width, height);
-    fill_triangle_test(buffer, width, height); 
+    // draw_rect_test(buffer, width, height);
+    // draw_circle_test(buffer, width, height);
+    // draw_line_test(buffer, width, height);
+    draw_triangle_test(buffer, width, height); 
 }
 
 #define BYTES_PER_PIXEL 4
@@ -470,6 +430,7 @@ alloc_back_buffer(u32 width, u32 height) {
     return(result);
 }
 
+#if 0
 int
 main(void) {
     u32 window_width = 800;
@@ -537,3 +498,26 @@ main(void) {
     }
     return(0);
 }
+#else
+
+/////////////////////////////
+// NOTE: Stretchy Buffer Test
+int
+main(void) {
+    s32 *buf = 0;
+    assert(buf_len(buf) == 0);
+    enum { N = 1024 };
+    for (s32 i = 0; i < N; ++i) {
+        buf_push(buf, i);
+    }
+    assert(buf_len(buf) == N);
+    for (s32 i = 0; i < (s32)buf_len(buf); ++i) {
+        assert(buf[i] == i);
+    }
+    buf_free(buf);
+    assert(buf == 0);
+    assert(buf_len(buf) == 0);
+    return(0);
+}
+
+#endif
