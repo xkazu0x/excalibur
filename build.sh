@@ -3,13 +3,16 @@ set -eu
 cd "$(dirname "$0")"
 
 for arg in "$@"; do declare $arg='1'; done
+if [ ! -v gcc ];     then clang=1; fi
 if [ ! -v release ]; then debug=1; fi
 if [ -v debug ];     then echo "[debug mode]"; fi
 if [ -v release ];   then echo "[release mode]"; fi
+if [ -v clang ];     then compiler="${CC:-clang}"; echo "[clang compiler]"; fi
+if [ -v gcc ];       then compiler="${CC:-gcc}"; echo "[gcc compiler]"; fi
 
-compile_common="-I../src/ -pedantic -Wall -Wextra -Wno-unused-function"
-compile_debug="gcc -g -O0 ${compile_common}"
-compile_release="gcc -g -O2 ${compile_common}"
+compile_common="-I../src/ -g -pedantic -Wall -Wextra -Wno-unused-function"
+compile_debug="$compiler -O0 ${compile_common}"
+compile_release="$compiler -O2 ${compile_common}"
 link="-lX11"
 out="-o"
 
