@@ -19,7 +19,7 @@ if [ -v release ]; then compile="$compile_release"; fi
 mkdir -p build
 
 cd build
-$compile ../src/main.c $link $out EXCALIBUR 
+$compile ../src/main.c $link $out excalibur 
+if [ -v run ]; then ./excalibur; fi
 cd ..
 
-if [ -v run ]; then ./build/EXCALIBUR; fi
