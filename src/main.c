@@ -1,12 +1,5 @@
 #include "base.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-
-///////////////////////////////
-// NOTE: Draw functions
+#include "os_linux.c"
 
 internal void
 clear(u32 *buffer, u32 width, u32 height, u32 color) {
@@ -408,98 +401,37 @@ draw_test(u32 *buffer, u32 width, u32 height) {
     draw_triangle_test(buffer, width, height); 
 }
 
-#define BYTES_PER_PIXEL 4
-#define BITS_PER_PIXEL 32
-
-typedef struct {
-    u32 width;
-    u32 height;
-    u32 pitch;
-    uxx size;
-    u32 *mem;
-} Back_Buffer;
-
-internal Back_Buffer
-alloc_back_buffer(u32 width, u32 height) {
-    Back_Buffer result = {0};
-    result.width = width;
-    result.height = height;
-    result.pitch = result.width*BYTES_PER_PIXEL;
-    result.size = result.pitch*result.height;
-    result.mem = malloc(result.size);
-    return(result);
-}
-
-#if 0
 int
 main(void) {
     u32 window_width = 800;
     u32 window_height = 600;
-    Back_Buffer back_buffer = alloc_back_buffer(window_width, window_height); 
-    Display *display = XOpenDisplay(0);
-    if (display) {
-        Window root = XDefaultRootWindow(display);
-        Window window = XCreateSimpleWindow(display, root, 0, 0, window_width, window_height, 0, 0, 0xFF00FF);
-
-        Atom wm_delete_window = XInternAtom(display, "WM_DELETE_WINDOW", False);
-        XSetWMProtocols(display, window, &wm_delete_window, 1);
-
-        u32 event_masks = StructureNotifyMask;
-        XSelectInput(display, window, event_masks);
-        
-        XStoreName(display, window, "EXCALIBUR");
-        XMapWindow(display, window);
-        XFlush(display);
-
-        GC context = XCreateGC(display, window, 0, 0);
-
-        XWindowAttributes attributes = {0};
-        XGetWindowAttributes(display, window, &attributes);
-        XImage *image = XCreateImage(display, attributes.visual, attributes.depth, ZPixmap, 0, 
-                                     (char *)back_buffer.mem, back_buffer.width, back_buffer.height, 
-                                     BITS_PER_PIXEL, back_buffer.pitch);
-
-        b32 quit = false;
-        while (!quit) {
-            while (XPending(display)) {
-                XEvent base_event = {0};
-                XNextEvent(display, &base_event);
-                switch (base_event.type) {
-                    case ClientMessage: {
-                        XClientMessageEvent *event = (XClientMessageEvent *)&base_event;
-                        if ((Atom)event->data.l[0] == wm_delete_window) {
-                            quit = true;
-                        }
-                    } break;
-
-                    case FocusIn:
-                    case FocusOut: {
-                        XFocusChangeEvent *event = (XFocusChangeEvent *)&base_event;
-                        if (event->type == FocusIn) XAutoRepeatOff(display);
-                        if (event->type == FocusOut) XAutoRepeatOn(display);
-                    } break; 
-
-                    case ConfigureNotify: {
-                        XConfigureEvent *event = (XConfigureEvent *)&base_event;
-                        window_width = event->width;
-                        window_height = event->height;
-                        XDestroyImage(image);
-                        back_buffer = alloc_back_buffer(window_width, window_height);
-                        image = XCreateImage(display, attributes.visual, attributes.depth, ZPixmap, 0, 
-                                             (char *)back_buffer.mem, back_buffer.width, back_buffer.height, 
-                                             BITS_PER_PIXEL, back_buffer.pitch);
-                    } break;
-                }
+    os_create_window(window_width, window_height, "EXCALIBUR");
+    os_create_window_bitmap(window_width, window_height);
+    for (b32 quit = false; !quit;) {
+        os_update_window_events();
+        for (uxx event_index = 0; 
+             event_index < buf_len(events);
+             ++event_index) {
+            OS_Event *event = events + event_index;
+            switch(event->type) {
+                case OS_EVENT_QUIT: {
+                    quit = true;
+                } break;
+                case OS_EVENT_WINDOW_RESIZED: {
+                    window_width = event->width;
+                    window_height = event->height;
+                    os_resize_window_bitmap(window_width, window_height);
+                } break;
+                default: {
+                } break;
             }
-
-            draw_test(back_buffer.mem, back_buffer.width, back_buffer.height);
-            XPutImage(display, window, context, image, 0, 0, 0, 0, window_width, window_height);
         }
+        draw_test(bitmap.buffer, bitmap.width, bitmap.height);
+        os_window_present_bitmap(window_width, window_height);
     }
-    return(0);
 }
-#else
 
+#if 0
 /////////////////////////////
 // NOTE: Stretchy Buffer Test
 int
@@ -519,5 +451,4 @@ main(void) {
     assert(buf_len(buf) == 0);
     return(0);
 }
-
 #endif
