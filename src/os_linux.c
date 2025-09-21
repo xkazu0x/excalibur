@@ -32,19 +32,6 @@ os_create_window(u32 width, u32 height, char *title) {
     XFlush(linux_state.display);
 }
 
-#define BYTES_PER_PIXEL 4
-#define BITS_PER_PIXEL 32
-
-typedef struct {
-    u32 width;
-    u32 height;
-    u32 pitch;
-    uxx size;
-    u32 *buffer;
-} OS_Bitmap;
-
-global OS_Bitmap bitmap;
-
 internal void 
 os_create_window_bitmap(u32 width, u32 height) {
     bitmap.width = width;
@@ -69,22 +56,9 @@ os_window_present_bitmap(u32 width, u32 height) {
     XPutImage(linux_state.display, linux_state.window, linux_state.context, linux_state.image, 0, 0, 0, 0, width, height);
 }
 
-typedef enum {
-    OS_EVENT_NULL,
-    OS_EVENT_QUIT,
-    OS_EVENT_WINDOW_RESIZED,
-} OS_Event_Type;
-
-typedef struct {
-    OS_Event_Type type;
-    u32 width;
-    u32 height;
-} OS_Event;
-
-global OS_Event *events;
-
 internal void
 os_update_window_events(void) {
+    buf_clear(events);
     while (XPending(linux_state.display)) {
         XEvent xe = {0};
         XNextEvent(linux_state.display, &xe);
@@ -98,7 +72,6 @@ os_update_window_events(void) {
                     buf_push(events, event);
                 }
             } break;
-
             case ConfigureNotify: {
                 XConfigureEvent *e = (XConfigureEvent *)&xe;
                 OS_Event event = {
@@ -108,7 +81,6 @@ os_update_window_events(void) {
                 };
                 buf_push(events, event);
             } break;
-
             case FocusIn:
             case FocusOut: {
                 XFocusChangeEvent *e = (XFocusChangeEvent *)&xe;

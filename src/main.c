@@ -1,5 +1,5 @@
 #include "base.h"
-#include "os_linux.c"
+#include "os.h"
 
 internal void
 clear(u32 *buffer, u32 width, u32 height, u32 color) {
@@ -405,7 +405,8 @@ int
 main(void) {
     u32 window_width = 800;
     u32 window_height = 600;
-    os_create_window(window_width, window_height, "EXCALIBUR");
+    char *window_title = "EXCALIBUR";
+    os_create_window(window_width, window_height, window_title);
     os_create_window_bitmap(window_width, window_height);
     for (b32 quit = false; !quit;) {
         os_update_window_events();
@@ -423,6 +424,7 @@ main(void) {
                     os_resize_window_bitmap(window_width, window_height);
                 } break;
                 default: {
+                    invalid_path;
                 } break;
             }
         }
@@ -430,25 +432,3 @@ main(void) {
         os_window_present_bitmap(window_width, window_height);
     }
 }
-
-#if 0
-/////////////////////////////
-// NOTE: Stretchy Buffer Test
-int
-main(void) {
-    s32 *buf = 0;
-    assert(buf_len(buf) == 0);
-    enum { N = 1024 };
-    for (s32 i = 0; i < N; ++i) {
-        buf_push(buf, i);
-    }
-    assert(buf_len(buf) == N);
-    for (s32 i = 0; i < (s32)buf_len(buf); ++i) {
-        assert(buf[i] == i);
-    }
-    buf_free(buf);
-    assert(buf == 0);
-    assert(buf_len(buf) == 0);
-    return(0);
-}
-#endif
