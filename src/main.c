@@ -2,6 +2,37 @@
 #include "os.h"
 
 internal void
+unpack_rgba32(u32 color, u8 *r, u8 *g, u8 *b, u8 *a) {
+    *a = ((color >> 24) & 0xFF);
+    *r = ((color >> 16) & 0xFF);
+    *g = ((color >>  8) & 0xFF);
+    *b = ((color >>  0) & 0xFF);
+}
+
+internal u32
+pack_rgba32(u8 r, u8 g, u8 b, u8 a) {
+    u32 result = ((a << 24) | (r << 16) | (g << 8) | (b << 0));
+    return(result);
+}
+
+internal u32
+color_blend(u32 dst, u32 src) {
+    u8 r1, g1, b1, a1;
+    u8 r2, g2, b2, a2; 
+
+    unpack_rgba32(dst, &r1, &g1, &b1, &a1);
+    unpack_rgba32(src, &r2, &g2, &b2, &a2);
+
+    u8 r = r1 + (r2 - r1)*a2/255;
+    u8 g = g1 + (g2 - g1)*a2/255;
+    u8 b = b1 + (b2 - b1)*a2/255;
+    u8 a = a1;
+
+    u32 result = pack_rgba32(r, g, b, a);
+    return(result);
+}
+
+internal void
 clear(u32 *buffer, u32 width, u32 height, u32 color) {
     for (u32 i = 0; i < width*height; ++i) {
         buffer[i] = color;
@@ -20,7 +51,8 @@ draw_rect(u32 *buffer, u32 width, u32 height,
     if (y1 > (s32)height) y1 = height;
     for (s32 y = y0; y < y1; ++y) {
         for (s32 x = x0; x < x1; ++x) {
-            buffer[y*width + x] = color;
+            u32 *dst = buffer + y*width + x;
+            *dst = color_blend(*dst, color);
         }
     }
 }
@@ -43,7 +75,8 @@ draw_circle(u32 *buffer, u32 width, u32 height,
             s32 dx = x - cx;
             s32 dy = y - cy;
             if (dx*dx + dy*dy < r*r) {
-                buffer[y*width + x] = color; 
+                u32 *dst = buffer + y*width + x;
+                *dst = color_blend(*dst, color);
             }
         }
     }
@@ -68,7 +101,8 @@ draw_line(u32 *buffer, u32 width, u32 height,
             for (s32 x = x0; x <= x1; ++x) {
                 if ((y >= 0 && y < (s32)height) &&
                     (x >= 0 && x < (s32)width)) {
-                    buffer[y*width + x] = color; 
+                    u32 *dst = buffer + y*width + x;
+                    *dst = color_blend(*dst, color); 
                 }
                 if (d >= 0) {
                     y += dir;
@@ -92,7 +126,8 @@ draw_line(u32 *buffer, u32 width, u32 height,
             for (s32 y = y0; y <= y1; ++y) {
                 if ((y >= 0 && y < (s32)height) &&
                     (x >= 0 && x < (s32)width)) {
-                    buffer[y*width + x] = color; 
+                    u32 *dst = buffer + y*width + x;
+                    *dst = color_blend(*dst, color); 
                 }
                 if (d >= 0) {
                     x += dir;
@@ -104,11 +139,12 @@ draw_line(u32 *buffer, u32 width, u32 height,
     }
 }
 
+// TODO: OLD ONE!!!!!!!!!!!!!!
 internal void
 draw_triangle0(u32 *buffer, u32 width, u32 height,
-               s32 x0, s32 y0, u32 r0, u32 g0, u32 b0, 
-               s32 x1, s32 y1, u32 r1, u32 g1, u32 b1, 
-               s32 x2, s32 y2, u32 r2, u32 g2, u32 b2) {
+               s32 x0, s32 y0, u32 c0, 
+               s32 x1, s32 y1, u32 c1, 
+               s32 x2, s32 y2, u32 c2) {
     s32 x01 = x1 - x0;
     s32 y01 = y1 - y0;
 
@@ -120,7 +156,7 @@ draw_triangle0(u32 *buffer, u32 width, u32 height,
 
     s32 x02 = x2 - x0;
     s32 y02 = y2 - y0;
-    s32 area = x01*y02 - y01*x02;
+    s32 det = x01*y02 - y01*x02;
 
     s32 bias0 = ((y01 == 0 && x01 > 0) || (y01 < 0)) ? 0 : -1;
     s32 bias1 = ((y12 == 0 && x12 > 0) || (y12 < 0)) ? 0 : -1;
@@ -148,9 +184,16 @@ draw_triangle0(u32 *buffer, u32 width, u32 height,
                     s32 w2 = x20*dy2 - y20*dx2 + bias2;
 
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                        f32 alpha = (f32)w0/(f32)area;
-                        f32 beta  = (f32)w1/(f32)area;
-                        f32 gamma = (f32)w2/(f32)area;
+                        f32 alpha = (f32)w0/(f32)det;
+                        f32 beta  = (f32)w1/(f32)det;
+                        f32 gamma = (f32)w2/(f32)det;
+                        
+                        u8 r0, g0, b0, a0;
+                        unpack_rgba32(c0, &r0, &g0, &b0, &a0);
+                        u8 r1, g1, b1, a1;
+                        unpack_rgba32(c1, &r1, &g1, &b1, &a1);
+                        u8 r2, g2, b2, a2;
+                        unpack_rgba32(c2, &r2, &g2, &b2, &a2);
 
                         u32 r = alpha*r0 + beta*r1 + gamma*r2;
                         u32 g = alpha*g0 + beta*g1 + gamma*g2;
@@ -170,9 +213,9 @@ draw_triangle0(u32 *buffer, u32 width, u32 height,
 // to the other function
 internal void
 draw_triangle(u32 *buffer, u32 width, u32 height,
-              s32 x0, s32 y0, u32 r0, u32 g0, u32 b0, 
-              s32 x1, s32 y1, u32 r1, u32 g1, u32 b1, 
-              s32 x2, s32 y2, u32 r2, u32 g2, u32 b2) {
+              s32 x0, s32 y0, u32 c0, 
+              s32 x1, s32 y1, u32 c1, 
+              s32 x2, s32 y2, u32 c2) {
     s32 x01 = x1 - x0;
     s32 y01 = y1 - y0;
 
@@ -184,7 +227,7 @@ draw_triangle(u32 *buffer, u32 width, u32 height,
 
     s32 x02 = x2 - x0;
     s32 y02 = y2 - y0;
-    s32 area = x01*y02 - y01*x02;
+    s32 det = x01*y02 - y01*x02;
 
     s32 bias0 = ((y01 == 0 && x01 > 0) || (y01 < 0)) ? 0 : -1;
     s32 bias1 = ((y12 == 0 && x12 > 0) || (y12 < 0)) ? 0 : -1;
@@ -226,16 +269,25 @@ draw_triangle(u32 *buffer, u32 width, u32 height,
             for (s32 x = x_min; x < x_max; ++x) {
                 if (x >= 0 && x < (s32)width) {
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                        f32 alpha = (f32)w0/(f32)area;
-                        f32 beta  = (f32)w1/(f32)area;
-                        f32 gamma = (f32)w2/(f32)area;
+                        f32 alpha = (f32)w0/(f32)det;
+                        f32 beta  = (f32)w1/(f32)det;
+                        f32 gamma = (f32)w2/(f32)det;
+
+                        u8 r0, g0, b0, a0;
+                        unpack_rgba32(c0, &r0, &g0, &b0, &a0);
+                        u8 r1, g1, b1, a1;
+                        unpack_rgba32(c1, &r1, &g1, &b1, &a1);
+                        u8 r2, g2, b2, a2;
+                        unpack_rgba32(c2, &r2, &g2, &b2, &a2);
 
                         u32 r = beta*r0 + gamma*r1 + alpha*r2;
                         u32 g = beta*g0 + gamma*g1 + alpha*g2;
                         u32 b = beta*b0 + gamma*b1 + alpha*b2;
-
-                        u32 color = (r << 16) | (g << 8) | (b << 0);
-                        buffer[y*width + x] = color;
+                        u32 a = beta*a0 + gamma*a1 + alpha*a2;
+                        u32 color0 = pack_rgba32(r, g, b, a);  
+                        
+                        u32 *dst = buffer + y*width + x;
+                        *dst = color_blend(*dst, color0);
                     }
                 }
                 w0 += dw0_col;
@@ -259,32 +311,32 @@ draw_rect_test(u32 *buffer, u32 width, u32 height) {
     {
         x = -size/2;
         y = -size/2;
-        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
+        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xFFFF8033);
         x = width - size/2;
         y = -size/2;
-        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
+        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xFFFF8033);
         x = width - size/2;
         y = height - size/2;
-        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
+        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xFFFF8033);
         x = -size/2;
         y = height - size/2;
-        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xff8033);
+        draw_rect(buffer, width, height, x, y, x + size, y + size, 0xFFFF8033);
     }
 
     // NOTE: Check Bottom-Right to Top-Left draw order
     {
         x = -size/2;
         y = (height - size)/2;
-        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
+        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xFFFF8033);
         x = width - size/2;
         y = (height - size)/2;
-        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
+        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xFFFF8033);
         x = (width - size)/2;
         y = -size/2;
-        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xff8033);
+        draw_rect(buffer, width, height, x + size, y + size, x, y, 0xFFFF8033);
         x = (width - size)/2;
         y = height - size/2;
-        draw_rect(buffer, width, height, x + size, y + size, x, y,  0xff8033);
+        draw_rect(buffer, width, height, x + size, y + size, x, y,  0xFFFF8033);
     }
 }
 
@@ -298,16 +350,16 @@ draw_circle_test(u32 *buffer, u32 width, u32 height) {
     {
         cx = -16;
         cy = -16;
-        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xFFFF8033);
         cx = width;
         cy = -16;
-        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xFFFF8033);
         cx = width;
         cy = height;
-        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xFFFF8033);
         cx = -16;
         cy = height;
-        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xFFFF8033);
     }
 
     // NOTE: Check negative radius
@@ -315,7 +367,7 @@ draw_circle_test(u32 *buffer, u32 width, u32 height) {
         r = -(height/4);
         cx = width/2;
         cy = height/2;
-        draw_circle(buffer, width, height, cx, cy, r, 0xff8033);
+        draw_circle(buffer, width, height, cx, cy, r, 0xFFFF8033);
     }
 }
 
@@ -384,13 +436,46 @@ draw_triangle_test(u32 *buffer, u32 width, u32 height) {
     project_to_screen(width, height, w3.x, w3.y, &p3.x, &p3.y);
 
     draw_triangle(buffer, width, height,
-                  p0.x, p0.y, 0xFF, 0x00, 0x00,
-                  p1.x, p1.y, 0x00, 0xFF, 0x00,
-                  p2.x, p2.y, 0x00, 0x00, 0xFF);
+                  p0.x, p0.y, 0xFFFF0000,
+                  p1.x, p1.y, 0xFF00FF00,
+                  p2.x, p2.y, 0xFF0000FF);
     draw_triangle(buffer, width, height,
-                  p2.x, p2.y, 0xFF, 0x00, 0x00,
-                  p3.x, p3.y, 0x00, 0xFF, 0x00,
-                  p0.x, p0.y, 0x00, 0x00, 0xFF);
+                  p2.x, p2.y, 0xFFFF0000,
+                  p3.x, p3.y, 0xFF00FF00,
+                  p0.x, p0.y, 0xFF0000FF);
+}
+
+internal void
+alpha_blending_test(u32 *buffer, u32 width, u32 height) {
+    s32 x, y, r;
+    clear(buffer, width, height, 0x202020);
+    {
+        r = height/4;
+        x = width/2 + r/3;
+        y = height/2 + r/3;
+        draw_rect(buffer, width, height, x, y, x - r, y - r, 0xffaa2020);
+
+        x = width/2 - r/3;
+        y = height/2 - r/3;
+        draw_rect(buffer, width, height, x, y, x + r, y + r, 0x5520aa20);
+    
+        x = width/2;
+        y = height/2;
+        r = height/10;
+        draw_circle(buffer, width, height, x, y, r, 0x552020aa);
+    
+        r = height/2;
+        s32 x0 = (width - r)/2;
+        s32 y0 = (height + r)/2;
+        s32 x1 = width/2;
+        s32 y1 = (height - r)/2;
+        s32 x2 = (width + r)/2;
+        s32 y2 = (height + r)/2;
+        draw_triangle(buffer, width, height,
+                      x0, y0, 0xEEFF0000,
+                      x1, y1, 0xAA00FF00,
+                      x2, y2, 0x110000FF);
+    }
 }
 
 internal void
@@ -398,7 +483,8 @@ draw_test(u32 *buffer, u32 width, u32 height) {
     // draw_rect_test(buffer, width, height);
     // draw_circle_test(buffer, width, height);
     // draw_line_test(buffer, width, height);
-    draw_triangle_test(buffer, width, height); 
+    // draw_triangle_test(buffer, width, height); 
+    alpha_blending_test(buffer, width, height);
 }
 
 int
