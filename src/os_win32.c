@@ -51,7 +51,7 @@ os_create_window(u32 width, u32 height, char *title) {
         .cbClsExtra = 0,
         .hInstance = instance,
         .hIcon = LoadIcon(0, IDI_APPLICATION),
-        .hCursor = LoadCursor(0, IDI_ARROW),
+        .hCursor = LoadCursor(0, IDC_ARROW),
         .hbrBackground = CreateSolidBrush(RGB(0, 0, 0)),
         .lpszMenuName = 0,
         .lpszClassName = "excalibur_window_class",
@@ -77,7 +77,7 @@ os_create_window_bitmap(u32 width, u32 height) {
     bitmap.buffer = VirtualAlloc(0, bitmap.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     win32_state.bitmap_info.bmiHeader.biSize = sizeof(win32_state.bitmap_info.bmiHeader);
     win32_state.bitmap_info.bmiHeader.biWidth = bitmap.width;
-    win32_state.bitmap_info.bmiHeader.biHeight = bitmap.height;
+    win32_state.bitmap_info.bmiHeader.biHeight = -bitmap.height;
     win32_state.bitmap_info.bmiHeader.biPlanes = 1;
     win32_state.bitmap_info.bmiHeader.biBitCount = BITS_PER_PIXEL;
     win32_state.bitmap_info.bmiHeader.biCompression = BI_RGB;
